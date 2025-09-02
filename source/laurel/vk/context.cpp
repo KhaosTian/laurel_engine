@@ -1,13 +1,13 @@
 #include <volk/volk.h>
 #include <vulkan/vk_enum_string_helper.h>
+#include <vulkan/vk_platform.h>
+#include <vulkan/vulkan_core.h>
 
 #include <laurel/utils/logger.hpp>
 
 #include "context.hpp"
 #include "check_error.hpp"
 #include "debug_utils.hpp"
-#include "vulkan/vk_platform.h"
-#include "vulkan/vulkan_core.h"
 
 // vulkan 错误回调
 static VKAPI_ATTR VkBool32 VKAPI_CALL VkContextDebugReport(VkDebugUtilsMessageSeverityFlagBitsEXT      message_severity,
@@ -38,4 +38,72 @@ VkResult laurel::vk::Context::init(const laurel::vk::ContextInitInfo& init_info)
 
         laurel::vk::DebugUtil::getInstance().init(m_device); // 初始化debug util
     }
+}
+
+void laurel::vk::Context::deinit() {
+    if (m_device) {
+        vkDestroyDevice(m_device, context_info.alloc);
+    }
+
+    if (m_instance) {
+        if (m_debug_messenger && vkDestroyDebugUtilsMessengerEXT) {
+            vkDestroyDebugUtilsMessengerEXT(m_instance, m_debug_messenger, context_info.alloc);
+            m_debug_messenger = VK_NULL_HANDLE;
+        }
+        vkDestroyInstance(m_instance, context_info.alloc);
+    }
+
+    m_device   = VK_NULL_HANDLE;
+    m_instance = VK_NULL_HANDLE;
+}
+
+VkResult laurel::vk::Context::createInstance() {
+    VkApplicationInfo app_info {
+        .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pApplicationName   = context_info.application_name,
+        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName        = context_info.engine_name,
+        .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
+        .apiVersion         = context_info.api_version,
+    };
+
+    std::vector<const char*> layers;
+    if (context_info.enable_validation_layers) {
+        layers.push_back("VK_LAYER_KHRONOS_validation");
+    }
+
+    VkInstanceCreateInfo create_info {
+        .sType            = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .pNext            = context_info.instance_create_info_ext,
+        .pApplicationInfo = &app_info,
+        // 设置验证层
+        .enabledLayerCount   = static_cast<uint32_t>(layers.size()),
+        .ppEnabledLayerNames = layers.data(),
+        // 设置instance扩展
+        .enabledExtensionCount   = static_cast<uint32_t>(context_info.instance_extensions.size()),
+        .ppEnabledExtensionNames = context_info.instance_extensions.data(),
+    };
+
+    // 创建instance
+    VkResult result = vkCreateInstance(&create_info, context_info.alloc, &m_instance);
+    if (result != VK_SUCCESS) {
+        LOGE("Failed to create Vulkan instance: {}", string_VkResult(result));
+        return result;
+    }
+    volkLoadInstance(m_instance);
+
+    // 创建debug util messenger
+    if (context_info.enable_validation_layers) {
+        if (vkCreateDebugUtilsMessengerEXT) {
+            VkDebugUtilsMessengerCreateInfoEXT messenger_create_info { .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+                                                                       .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+                                                                       .messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+                                                                       .pfnUserCallback = VkContextDebugReport };
+            VK_CHECK(vkCreateDebugUtilsMessengerEXT(m_instance, &messenger_create_info, context_info.alloc, &m_debug_messenger));
+        } else {
+            LOGW("Cannot set up debug messenger!");
+        }
+    }
+
+    return VK_SUCCESS;
 }

@@ -3,7 +3,7 @@ set_version("0.1.0")
 
 set_arch("x64")
 set_plat("windows")
-set_toolchains("msvc")
+set_toolchains("clang")
 set_languages("c++20")
 
 add_rules("mode.debug", "mode.release")

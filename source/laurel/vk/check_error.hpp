@@ -7,9 +7,8 @@
 namespace laurel::vk {
 
 class CheckError {
-    using Callback = std::function<void(VkResult)>;
-
   private:
+    using Callback = std::function<void(VkResult)>;
     Callback m_callback;
 
   private:

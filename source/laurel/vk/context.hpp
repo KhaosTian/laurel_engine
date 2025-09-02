@@ -18,13 +18,15 @@ struct ExtensionInfo {
 };
 
 struct ContextInitInfo {
-    std::vector<const char*>               instance_extensions = {};
-    std::vector<laurel::vk::ExtensionInfo> device_extensions   = {};
-    std::vector<VkQueueFlags>              queues              = { VK_QUEUE_GRAPHICS_BIT };
-    const char*                            application_name    = "Laurel";
-    const char*                            engine_name         = "Laurel Engine";
-    uint32_t                               api_version         = VK_API_VERSION_1_3;
-    bool                                   enable_all_features = true;
+    std::vector<const char*>               instance_extensions      = {};
+    std::vector<laurel::vk::ExtensionInfo> device_extensions        = {};
+    std::vector<VkQueueFlags>              queues                   = { VK_QUEUE_GRAPHICS_BIT };
+    void*                                  instance_create_info_ext = nullptr;
+    const char*                            application_name         = "Laurel";
+    const char*                            engine_name              = "Laurel Engine";
+    uint32_t                               api_version              = VK_API_VERSION_1_3;
+    VkAllocationCallbacks*                 alloc                    = nullptr;
+    bool                                   enable_all_features      = true;
 #if LDEBUG
     bool enable_validation_layers = true;
     bool verbose                  = true;
@@ -47,6 +49,8 @@ class Context {
     std::vector<VkDeviceQueueCreateInfo> m_queue_create_infos = {};
     std::vector<laurel::vk::QueueInfo>   m_queue_infos        = {};
     std::vector<std::vector<float>>      m_queue_priorities   = {};
+
+    VkDebugUtilsMessengerEXT m_debug_messenger = {};
 
   public:
     ContextInitInfo context_info = {};
