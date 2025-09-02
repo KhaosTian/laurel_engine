@@ -1,0 +1,14 @@
+# 忽略构建目录
+build/*
+
+# 忽略xmake生成的文件
+.xmake/*
+vsxmake*/*
+
+# 忽略vscode生成的文件，但保留settings.json
+.vscode/*
+!.vscode/settings.json
+
+# 忽略IDEA和Visual Studio生成的文件
+.idea/*
+.vs/*
