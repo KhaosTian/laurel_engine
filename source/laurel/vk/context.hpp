@@ -4,9 +4,9 @@
 #include <vector>
 
 #include <vulkan/vulkan.h>
-#include "vulkan/vulkan_core.h"
+#include <vulkan/vulkan_core.h>
 
-#include "laurel/utils/utils.hpp"
+#include <laurel/utils/utils.hpp>
 #include "resources.hpp"
 
 namespace laurel::vk {
@@ -56,10 +56,10 @@ class Context {
     ContextInitInfo context_info = {};
 
   private:
-    NODISCARD VkResult createInstance();
-    NODISCARD VkResult createDevice();
-    NODISCARD VkResult pickPhysicalDevice();
-    NODISCARD bool     findQueueFamilies();
+    NODISCARD VkResult           createInstance();
+    NODISCARD VkResult           createDevice();
+    NODISCARD VkResult           pickPhysicalDevice();
+    NODISCARD QueueFamilyIndices findQueueFamilies();
 
     static VkResult getDeviceExtensions(VkPhysicalDevice physical_device, std::vector<VkExtensionProperties>& extension_properties);
 

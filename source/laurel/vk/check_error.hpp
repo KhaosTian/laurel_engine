@@ -28,13 +28,13 @@ class CheckError {
     VkResult report(VkResult result, const char* expression, const char* file, int line);
 };
 
-#define VK_CHECK(vkFunc) \
+#define CHECK(vkFunc) \
     { \
         const VkResult result = (vkFunc); \
         laurel::vk::CheckError::getInstance().check(result, #vkFunc, __FILE__, __LINE__); \
     }
 
-#define VK_REPORT(result) \
+#define FAIL_RETURN(result) \
     { \
         const VkResult res = (result); \
         laurel::vk::CheckError::getInstance().report(res, #result, __FILE__, __LINE__); \
