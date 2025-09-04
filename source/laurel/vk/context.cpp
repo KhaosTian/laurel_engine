@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <volk/volk.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vk_platform.h>
@@ -7,7 +8,6 @@
 
 #include "context.hpp"
 #include "check_error.hpp"
-#include "debug_utils.hpp"
 
 // vulkan 错误回调
 static VKAPI_ATTR VkBool32 VKAPI_CALL VkContextDebugReport(VkDebugUtilsMessageSeverityFlagBitsEXT      message_severity,
@@ -35,12 +35,10 @@ VkResult laurel::vk::Context::init(const laurel::vk::ContextInitInfo& init_info)
         VK_REPORT(createInstance());
         VK_REPORT(pickPhysicalDevice());
         VK_REPORT(createDevice());
-
-        laurel::vk::DebugUtil::getInstance().init(m_device); // 初始化debug util
     }
 }
 
-void laurel::vk::Context::deinit() {
+void laurel::vk::Context::reset() {
     if (m_device) {
         vkDestroyDevice(m_device, context_info.alloc);
     }
@@ -105,5 +103,19 @@ VkResult laurel::vk::Context::createInstance() {
         }
     }
 
+    return VK_SUCCESS;
+}
+
+VkResult laurel::vk::Context::pickPhysicalDevice() {
+    if (m_instance == VK_NULL_HANDLE) {
+        LOGE("Instance is not created!");
+        return VK_ERROR_INITIALIZATION_FAILED;
+    }
+
+    uint32_t device_count = 0;
+    VK_REPORT(vkEnumeratePhysicalDevices(m_instance, &device_count, nullptr));
+}
+
+VkResult laurel::vk::Context::createDevice() {
     return VK_SUCCESS;
 }

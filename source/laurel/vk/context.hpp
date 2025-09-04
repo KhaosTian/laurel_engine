@@ -70,7 +70,7 @@ class Context {
     };
 
     NODISCARD VkResult init(const ContextInitInfo& init_info);
-    void               deinit();
+    void               reset();
 
     VkInstance                                getInstance() const { return m_instance; }
     VkDevice                                  getDevice() const { return m_device; }
