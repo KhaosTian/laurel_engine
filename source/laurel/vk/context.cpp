@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 #include <volk/volk.h>
 #include <vulkan/vk_enum_string_helper.h>
@@ -137,45 +138,64 @@ VkResult laurel::vk::Context::pickPhysicalDevice() {
         }
     }
 
-    // device feature暂时不实现
+    // 查询 device feature
+    m_device_features.pNext = &m_device_features_11;
+    if (context_info.api_version >= VK_API_VERSION_1_2) m_device_features_11.pNext = &m_device_features_12;
+    if (context_info.api_version >= VK_API_VERSION_1_3) m_device_features_12.pNext = &m_device_features_13;
+    vkGetPhysicalDeviceFeatures2(m_physical_device, &m_device_features);
 
-    m_desiredQueues = context_info.queues;
+    m_desired_queues = context_info.queues;
+
+    if (!findQueueFamilies()) {
+        m_physical_device = {};
+        return VK_ERROR_INITIALIZATION_FAILED;
+    }
+
+    return VK_SUCCESS;
 }
 
-laurel::vk::QueueFamilyIndices laurel::vk::Context::findQueueFamilies() {
-    laurel::vk::QueueFamilyIndices indices = {};
-
+bool laurel::vk::Context::findQueueFamilies() {
     uint32_t queue_family_count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_family_count, nullptr);
     std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
     vkGetPhysicalDeviceQueueFamilyProperties(m_physical_device, &queue_family_count, queue_families.data());
 
-    // 寻找专用的计算队列
-    for (uint32_t i = 0; i < queue_family_count; i++) {
-        if (queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT && !(queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
-            indices.compute = i;
-            break;
-        }
+    // 跟踪每个队列簇使用了多少队列
+    std::unordered_map<uint32_t, uint32_t> queue_family_usage;
+    for (uint32_t i = 0; i < queue_families.size(); i++) {
+        queue_family_usage[i] = 0;
     }
 
-    for (uint32_t i = 0; i < queue_family_count; i++) {
-        // 寻找渲染队列
-        if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            indices.graphics = i;
+    for (const auto& desired_flags: m_desired_queues) {
+        int best_candidate_family = -1;
+        int highest_score         = -1;
+
+        for (uint32_t i = 0; i < queue_families.size(); i++) {
+            const auto& props = queue_families[i];
+            if (queue_family_usage[i] >= props.queueCount) continue; // 队列簇必须有空闲队列
+            if ((props.queueFlags & desired_flags) == 0) continue;   // 队列簇必须支持部分期望的功能
+
+            int score = 0;
+
+            if ((props.queueFlags & desired_flags) == desired_flags) score++;                                    // 完全匹配的优先
+            if ((desired_flags & VK_QUEUE_GRAPHICS_BIT) || !(props.queueFlags & VK_QUEUE_GRAPHICS_BIT)) score++; // 惩罚期望不需要图形，但是队列簇支持图形的情况
+            if (queue_family_usage[i] == 0) score++;                                                             // 队列簇没有被使用过的优先
+
+            if (score > highest_score) {
+                highest_score         = score;
+                best_candidate_family = i;
+            }
         }
 
-        // 如果没找到专用的计算队列，则尝试与渲染队列共享
-        if (!indices.compute.has_value() && queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
-            indices.compute = i;
+        if (best_candidate_family != -1) {
+            m_queue_infos.push_back({ static_cast<uint32_t>(best_candidate_family), queue_family_usage[best_candidate_family] });
+            queue_family_usage[best_candidate_family]++;
+        } else {
+            LOGE("Failed to find a suitable queue family.");
+            return false;
         }
     }
-
-    if (!indices.isComplete()) {
-        LOGE("Failed to find a suitable graphics or compute queue family.");
-        return {};
-    }
-
-    return indices;
+    return true;
 }
 
 VkResult laurel::vk::Context::getDeviceExtensions(VkPhysicalDevice physical_device, std::vector<VkExtensionProperties>& extension_properties) {
@@ -186,14 +206,22 @@ VkResult laurel::vk::Context::getDeviceExtensions(VkPhysicalDevice physical_devi
     return VK_SUCCESS;
 }
 
+bool laurel::vk::Context::filterAvailableExtensions(const std::vector<VkExtensionProperties>& available_extensions,
+                                                    const std::vector<const char*>&           desired_extensions,
+                                                    std::vector<ExtensionInfo>&               filtered_extensions) {
+    bool found = false;
+
+    return found;
+}
+
 VkResult laurel::vk::Context::createDevice() {
     if (m_physical_device == VK_NULL_HANDLE) {
         LOGE("Physical device is not picked.");
         return VK_ERROR_INITIALIZATION_FAILED;
     }
 
-    std::vector<ExtensionInfo>         filtered_extensions = {};
-    std::vector<VkExtensionProperties> extension_properties;
+    std::vector<ExtensionInfo>         filtered_extensions  = {};
+    std::vector<VkExtensionProperties> extension_properties = {};
     FAIL_RETURN(getDeviceExtensions(m_physical_device, extension_properties));
 
     return VK_SUCCESS;

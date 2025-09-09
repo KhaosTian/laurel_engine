@@ -12,9 +12,11 @@
 namespace laurel::vk {
 
 struct ExtensionInfo {
-    const char* extension_name = nullptr;
-    void*       feature        = nullptr;
-    bool        required       = true;
+    const char* extension_name     = nullptr;
+    void*       feature            = nullptr;
+    bool        required           = true;
+    uint32_t    spec_version       = 0;
+    bool        exact_spec_version = true;
 };
 
 struct ContextInitInfo {
@@ -43,9 +45,13 @@ class Context {
     VkPhysicalDevice m_physical_device = {};
 
     // 用于device的创建
+    VkPhysicalDeviceFeatures2        m_device_features    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+    VkPhysicalDeviceVulkan11Features m_device_features_11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES };
+    VkPhysicalDeviceVulkan12Features m_device_features_12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+    VkPhysicalDeviceVulkan13Features m_device_features_13 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
 
     // 用于queue的创建
-    std::vector<VkQueueFlags>            m_desiredQueues      = {};
+    std::vector<VkQueueFlags>            m_desired_queues     = { VK_QUEUE_GRAPHICS_BIT };
     std::vector<VkDeviceQueueCreateInfo> m_queue_create_infos = {};
     std::vector<laurel::vk::QueueInfo>   m_queue_infos        = {};
     std::vector<std::vector<float>>      m_queue_priorities   = {};
@@ -56,10 +62,12 @@ class Context {
     ContextInitInfo context_info = {};
 
   private:
-    NODISCARD VkResult           createInstance();
-    NODISCARD VkResult           createDevice();
-    NODISCARD VkResult           pickPhysicalDevice();
-    NODISCARD QueueFamilyIndices findQueueFamilies();
+    NODISCARD VkResult createInstance();
+    NODISCARD VkResult createDevice();
+    NODISCARD VkResult pickPhysicalDevice();
+    NODISCARD bool     findQueueFamilies();
+
+    bool filterAvailableExtensions(const std::vector<VkExtensionProperties>& available_extensions, const std::vector<const char*>& desired_extensions, std::vector<ExtensionInfo>& filtered_extensions);
 
     static VkResult getDeviceExtensions(VkPhysicalDevice physical_device, std::vector<VkExtensionProperties>& extension_properties);
 
